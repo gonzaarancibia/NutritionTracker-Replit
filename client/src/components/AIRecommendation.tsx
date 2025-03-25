@@ -4,7 +4,7 @@ import {
   CardContent 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Robot } from "lucide-react";
+import { Bot } from "lucide-react"; // Cambiado de Robot a Bot
 import { useAIAssistant } from "@/hooks/useAIAssistant";
 import { useMacros } from "@/hooks/useMacros";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +50,7 @@ export default function AIRecommendation() {
         <CardContent className="p-4">
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-3">
-              <Robot className="h-5 w-5 text-primary" />
+              <Bot className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="font-medium">NutriBot</h3>
