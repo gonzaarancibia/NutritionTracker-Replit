@@ -20,18 +20,18 @@ export default function TabNavigation({ activeTab }: TabProps) {
       <div className="container mx-auto px-4">
         <nav className="flex overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
-            <Link key={tab.name} href={tab.path}>
-              <a
-                className={`
-                  flex-shrink-0 px-5 py-3 font-medium border-b-2 transition
-                  ${tab.name === activeTab
-                    ? "text-primary border-primary" 
-                    : "text-gray-500 hover:text-primary border-transparent hover:border-gray-200"
-                  }
-                `}
-              >
-                {tab.name}
-              </a>
+            <Link 
+              key={tab.name} 
+              href={tab.path}
+              className={`
+                flex-shrink-0 px-5 py-3 font-medium border-b-2 transition
+                ${tab.name === activeTab
+                  ? "text-primary border-primary" 
+                  : "text-gray-500 hover:text-primary border-transparent hover:border-gray-200"
+                }
+              `}
+            >
+              {tab.name}
             </Link>
           ))}
         </nav>
