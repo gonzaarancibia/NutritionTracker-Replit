@@ -8,7 +8,16 @@ import {
 } from "@shared/schema";
 
 // Interface for storage operations
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+// Crear memory store para las sesiones
+const MemoryStore = createMemoryStore(session);
+
 export interface IStorage {
+  // Session store para auth
+  sessionStore: session.Store;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -59,6 +68,9 @@ export class MemStorage implements IStorage {
     aiMealRequests: number;
   };
 
+  // Session store
+  public sessionStore: session.Store;
+
   constructor() {
     this.users = new Map();
     this.userGoals = new Map();
@@ -72,6 +84,11 @@ export class MemStorage implements IStorage {
       dailyLogs: 1,
       aiMealRequests: 1
     };
+    
+    // Inicializar session store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // Limpiar sesiones expiradas cada 24 horas
+    });
 
     // Add a default user for testing
     this.createUser({ username: "demo", password: "demo" });

@@ -9,18 +9,22 @@ import MyMeals from "@/pages/MyMeals";
 import AIAssistant from "@/pages/AIAssistant";
 import Statistics from "@/pages/Statistics";
 import Profile from "@/pages/Profile";
+import AuthPage from "@/pages/auth-page";
 import Header from "@/components/Header";
 import MobileNavigation from "@/components/MobileNavigation";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard}/>
-      <Route path="/daily-log" component={DailyLog}/>
-      <Route path="/my-meals" component={MyMeals}/>
-      <Route path="/ai-assistant" component={AIAssistant}/>
-      <Route path="/statistics" component={Statistics}/>
-      <Route path="/profile" component={Profile}/>
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/daily-log" component={DailyLog} />
+      <ProtectedRoute path="/my-meals" component={MyMeals} />
+      <ProtectedRoute path="/ai-assistant" component={AIAssistant} />
+      <ProtectedRoute path="/statistics" component={Statistics} />
+      <ProtectedRoute path="/profile" component={Profile} />
+      <Route path="/auth" component={AuthPage} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
@@ -30,14 +34,16 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-screen">
-        <Header />
-        <main className="flex-1 overflow-auto pb-20 md:pb-6 bg-gray-50">
-          <Router />
-        </main>
-        <MobileNavigation />
-      </div>
-      <Toaster />
+      <AuthProvider>
+        <div className="flex flex-col h-screen">
+          <Header />
+          <main className="flex-1 overflow-auto pb-20 md:pb-6 bg-gray-50">
+            <Router />
+          </main>
+          <MobileNavigation />
+        </div>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

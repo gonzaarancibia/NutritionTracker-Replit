@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -12,12 +12,16 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import OpenAI from "openai";
 import { generateMealWithGemini } from "./gemini";
+import { setupAuth } from "./auth";
 
 // Initialize OpenAI (will use environment variable OPENAI_API_KEY)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "demo_key" });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // Configurar autenticación
+  const requireAuth = setupAuth(app);
 
   // Error handling middleware for Zod validation
   function handleZodError(error: ZodError, res: Response) {
@@ -26,10 +30,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Helper function to require authentication
-  function requireAuthentication(req: Request, res: Response, next: () => void) {
-    // In a real app, we would check session/token
-    // For this demo, we'll just use a hardcoded user ID
-    req.body.userId = 1;
+  function requireAuthentication(req: Request, res: Response, next: NextFunction) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "No autenticado" });
+    }
+    
+    // Asegurar que el userId esté establecido (req.user viene de passport)
+    if (req.user) {
+      req.body.userId = req.user.id;
+    }
+    
     next();
   }
 
