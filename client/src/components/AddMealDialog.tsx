@@ -298,13 +298,4 @@ export default function AddMealDialog({
   );
 }
 
-// Time picker component
-export function TimePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <Input
-      type="time"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  );
-}
+// Note: TimePicker has been moved to client/src/components/ui/time-picker.tsx
