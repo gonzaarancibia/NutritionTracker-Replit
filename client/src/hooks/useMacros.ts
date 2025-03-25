@@ -23,22 +23,23 @@ export function useMacros() {
     data: dailyLog, 
     isLoading: isLoadingDailyLog
   } = useQuery<DailyLog | null>({
-    queryKey: ["/api/daily-logs", { date: today }],
+    queryKey: ["/api/daily-logs/today"],
+    queryFn: () => fetch(`/api/daily-logs?date=${today}`).then(res => res.json()),
   });
 
   // Fetch logs for the past 7 days for weekly view
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 6);
   const endDate = new Date();
+  const startDateString = startDate.toISOString().split('T')[0];
+  const endDateString = endDate.toISOString().split('T')[0];
   
   const { 
     data: weeklyData, 
     isLoading: isLoadingWeekly
   } = useQuery<DailyLog[]>({
-    queryKey: ["/api/daily-logs", { 
-      startDate: startDate.toISOString().split('T')[0], 
-      endDate: endDate.toISOString().split('T')[0] 
-    }],
+    queryKey: ["/api/daily-logs/weekly"],
+    queryFn: () => fetch(`/api/daily-logs?startDate=${startDateString}&endDate=${endDateString}`).then(res => res.json()),
   });
 
   // Process and memoize weekly logs

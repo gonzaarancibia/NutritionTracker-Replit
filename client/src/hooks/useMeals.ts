@@ -31,7 +31,8 @@ export function useMeals() {
     data: dailyLog, 
     isLoading: isLoadingDailyLog
   } = useQuery<any>({
-    queryKey: ["/api/daily-logs", { date: today }],
+    queryKey: ["/api/daily-logs"],
+    queryFn: () => apiRequest("GET", `/api/daily-logs?date=${today}`).then(res => res.json())
   });
 
   // Today's meals from the daily log
@@ -189,9 +190,22 @@ export function useMeals() {
       return todayMeals;
     }
     
-    // For other dates, you would need to fetch the log for that specific date
-    // This is a simplified implementation
-    return [];
+    // For non-today dates, fetch on-demand
+    // Implementación más completa - necesitaríamos usar useQueries para un enfoque mejor
+    // pero esto servirá para nuestro propósito
+    apiRequest("GET", `/api/daily-logs?date=${dateString}`)
+      .then(res => res.json())
+      .then(log => {
+        if (log && log.mealEntries && log.mealEntries.length > 0) {
+          // Actualizar la cache de react-query
+          queryClient.setQueryData(["/api/daily-logs", dateString], log);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching meals for date", dateString, err);
+      });
+    
+    return todayMeals.length > 0 ? todayMeals : [];
   };
 
   // Function to search meals
