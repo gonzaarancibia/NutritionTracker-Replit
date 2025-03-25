@@ -12,7 +12,8 @@ export default function TabNavigation({ activeTab }: TabProps) {
     { name: "Registro Diario", path: "/daily-log" },
     { name: "Mis Comidas", path: "/my-meals" },
     { name: "Asistente IA", path: "/ai-assistant" },
-    { name: "Estadísticas", path: "/statistics" }
+    { name: "Estadísticas", path: "/statistics" },
+    { name: "Perfil", path: "/profile" }
   ];
 
   return (

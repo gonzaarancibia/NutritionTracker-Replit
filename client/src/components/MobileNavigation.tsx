@@ -4,7 +4,8 @@ import {
   Calendar, 
   UtensilsCrossed, 
   Bot, 
-  BarChart3
+  BarChart3,
+  UserCircle
 } from "lucide-react";
 
 export default function MobileNavigation() {
@@ -55,6 +56,14 @@ export default function MobileNavigation() {
         >
           <BarChart3 className="h-5 w-5" />
           <span className="text-xs mt-1">Stats</span>
+        </Link>
+        
+        <Link 
+          href="/profile"
+          className={`py-3 px-4 flex flex-col items-center ${isActive('/profile') ? 'text-primary' : 'text-gray-500'}`}
+        >
+          <UserCircle className="h-5 w-5" />
+          <span className="text-xs mt-1">Perfil</span>
         </Link>
       </div>
     </nav>

@@ -8,6 +8,7 @@ import DailyLog from "@/pages/DailyLog";
 import MyMeals from "@/pages/MyMeals";
 import AIAssistant from "@/pages/AIAssistant";
 import Statistics from "@/pages/Statistics";
+import Profile from "@/pages/Profile";
 import Header from "@/components/Header";
 import MobileNavigation from "@/components/MobileNavigation";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/my-meals" component={MyMeals}/>
       <Route path="/ai-assistant" component={AIAssistant}/>
       <Route path="/statistics" component={Statistics}/>
+      <Route path="/profile" component={Profile}/>
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
