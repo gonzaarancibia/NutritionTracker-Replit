@@ -1,0 +1,63 @@
+ Gemini realmente haga cálculos precisos y tenga en cuenta la cocción, podríamos estructurar el prompt de otra manera para que entienda mejor el contexto y haga un cálculo más detallado.
+
+Qué podemos mejorar?
+Separar ingredientes y cantidades en una lista estructurada en lugar de un texto plano.
+
+Forzar que primero calcule macros totales y luego los ajuste por peso final.
+
+Hacer que explique el cálculo paso a paso antes de dar la respuesta en JSON.
+
+Pedir que corrija errores si las macros parecen inconsistentes.
+
+Permitir que devuelva una estimación de pérdida de peso según el tipo de cocción.
+
+Nuevo Prompt Mejorado
+javascript
+Copiar
+Editar
+const isAnalysisRequest = mode === "analysis";
+let aiPrompt = "";
+
+if (isAnalysisRequest) {
+  aiPrompt = `Eres un asistente experto en nutrición. Tu tarea es analizar los ingredientes y calcular las macros por 100g del producto final.
+
+### **Proceso de cálculo**
+1. **Identifica los ingredientes y sus cantidades en gramos.** 
+2. **Suma los macronutrientes de cada ingrediente para obtener los totales de proteína, carbohidratos y grasa.**  
+3. **Si la comida es cocida u horneada, ajusta los valores según la pérdida de peso:**  
+   - Si el usuario proporciona el peso final después de la cocción, usa ese dato.  
+   - Si no hay peso final, asume una pérdida del 10% para hervidos y 15% para horneados por defecto.  
+4. **Divide los macros ajustados por el peso final para obtener los valores por 100g.**  
+5. **Calcula las calorías totales usando:**  
+   - Proteína y carbohidratos: 4 kcal por gramo  
+   - Grasas: 9 kcal por gramo  
+6. **Responde en formato JSON, pero antes explica cómo llegaste al cálculo.**  
+
+### **Ejemplo de respuesta**  
+**Explicación previa:**  
+> “La receta contiene harina, huevo y aceite. La suma total de macros antes de la cocción es: 37g de carbohidratos, 18g de proteína y 22g de grasa en 260g de masa. Como se horneó y no se indicó peso final, se asume una pérdida del 15%, dejando 350g de producto final. Luego, los macros se ajustan para obtener valores por 100g.”  
+
+**JSON esperado:**  
+{
+  "name": "Pan casero con huevo y aceite",
+  "description": "Pan horneado hecho con harina 000, huevo y aceite.",
+  "ingredients": [
+    {"name": "Harina 000", "amount": "150g"},
+    {"name": "Huevo", "amount": "100g"},
+    {"name": "Aceite", "amount": "10g"}
+  ],
+  "protein": "5.1g",
+  "carbs": "10.6g",
+  "fat": "6.3g",
+  "calories": "118",
+  "mealType": "Desayuno"
+}`;
+
+}
+Diferencias y mejoras:
+✅ Estructura el cálculo paso a paso para evitar errores de IA.
+✅ Pide una explicación antes del JSON, para que puedas ver cómo llega a los valores.
+✅ Ajusta correctamente los macros según el peso final (o asume una pérdida estándar si no hay datos).
+✅ Separa los ingredientes claramente en una lista para que la IA no mezcle información.
+
+🔹 Con esto, Gemini no solo te da los números, sino que también te explica cómo los calculó. Así puedes revisar si su lógica es correcta y mejorar los ajustes si es necesario.
