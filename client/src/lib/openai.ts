@@ -9,10 +9,15 @@ export interface MacroNeeds {
 }
 
 // Function to request a meal from the AI assistant
-export async function requestAIMeal(prompt: string, macroNeeds?: MacroNeeds): Promise<AIMealRequest> {
+export async function requestAIMeal(
+  prompt: string, 
+  macroNeeds?: MacroNeeds | null, 
+  mode: string = "recipe"
+): Promise<AIMealRequest> {
   const response = await apiRequest("POST", "/api/ai-meals", {
     prompt,
-    macroNeeds
+    macroNeeds,
+    mode
   });
   
   return response.json();

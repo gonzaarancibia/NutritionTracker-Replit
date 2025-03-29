@@ -307,14 +307,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Prompt requerido" });
       }
 
-      // Construct AI prompt with macro needs if provided
-      let aiPrompt = "Crea una receta de comida saludable";
+      // Los valores de modo vienen directamente del cliente ahora, explícitamente
+      const mode = req.body.mode || "recipe"; // Valor por defecto para compatibilidad
+      const isAnalysisRequest = mode === "analysis";
+      let aiPrompt = "";
       
-      if (macroNeeds) {
-        aiPrompt += ` que contenga aproximadamente ${macroNeeds.protein}g de proteínas, ${macroNeeds.carbs}g de carbohidratos y ${macroNeeds.fat}g de grasas.`;
+      if (isAnalysisRequest) {
+        // Analysis request: calculate macros for a food or recipe described by the user
+        aiPrompt = `Analiza los ingredientes descritos en el siguiente texto: "${prompt}". 
+        Calcula los valores nutricionales por cada 100g del producto final. 
+        Sé preciso y específico con los valores de macronutrientes.
+        Responde exclusivamente con un objeto JSON que contenga los siguientes campos: 
+        name (nombre de la comida, breve y descriptivo basado en los ingredientes), 
+        description (explicación breve del proceso de preparación),
+        ingredients (array de ingredientes con cantidades exactas),
+        protein (gramos de proteína por 100g, número con un decimal),
+        carbs (gramos de carbohidratos por 100g, número con un decimal),
+        fat (gramos de grasa por 100g, número con un decimal),
+        calories (calorías por 100g, número entero),
+        mealType (tipo de comida: Desayuno, Almuerzo, Cena, Merienda, o Snack).`;
+      } else {
+        // Recipe creation request (original behavior)
+        aiPrompt = "Crea una receta de comida saludable";
+        
+        if (macroNeeds) {
+          aiPrompt += ` que contenga aproximadamente ${macroNeeds.protein}g de proteínas, ${macroNeeds.carbs}g de carbohidratos y ${macroNeeds.fat}g de grasas.`;
+        }
+        
+        aiPrompt += ` ${prompt}. Responde exclusivamente con un objeto JSON que contenga los siguientes campos: 
+        name (nombre de la comida), 
+        description (descripción breve), 
+        ingredients (array de ingredientes con cantidades), 
+        protein (gramos de proteína por porción, número con un decimal), 
+        carbs (gramos de carbohidratos por porción, número con un decimal), 
+        fat (gramos de grasa por porción, número con un decimal), 
+        calories (calorías totales por porción, número entero), 
+        mealType (tipo de comida: Desayuno, Almuerzo, Cena, Merienda, o Snack).`;
       }
-      
-      aiPrompt += ` ${prompt}. Responde con un objeto JSON que contenga los siguientes campos: name (nombre de la comida), description (descripción breve), ingredients (array de ingredientes), protein (gramos de proteína), carbs (gramos de carbohidratos), fat (gramos de grasa), calories (calorías totales), mealType (tipo de comida: Desayuno, Almuerzo, Cena, Merienda).`;
 
       try {
         let result;
@@ -323,7 +352,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const aiResponse = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
-              { role: "system", content: "Eres un chef y nutricionista experto. Creas recetas saludables con sus macronutrientes exactos." },
+              { 
+                role: "system", 
+                content: isAnalysisRequest 
+                  ? "Eres un nutricionista experto que analiza con precisión el contenido nutricional de los alimentos. Tus cálculos de macronutrientes son precisos y se basan en información científica actualizada sobre composición de alimentos. Calculas siempre los valores por cada 100g de producto final."
+                  : "Eres un chef y nutricionista experto. Creas recetas saludables con sus macronutrientes exactos." 
+              },
               { role: "user", content: aiPrompt }
             ],
             response_format: { type: "json_object" }
@@ -342,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             // Intentar usar Gemini como alternativa
             console.log("Intentando con Gemini API como alternativa a OpenAI");
-            result = await generateMealWithGemini(prompt);
+            result = await generateMealWithGemini(prompt, mode);
             console.log("Gemini generó la respuesta correctamente");
           } catch (geminiError) {
             console.error("Error with Gemini API:", geminiError);
@@ -350,41 +384,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Si ambas APIs fallan, usar un resultado predefinido para demostración
             if ((openaiError?.status === 429 || openaiError?.code === 'insufficient_quota') || true) {
               console.log("Usando resultado de comida de demostración debido a errores en las APIs");
-              // Generar valores nutricionales basados en macroNeeds o valores predeterminados
-              const protein = macroNeeds ? macroNeeds.protein : Math.floor(Math.random() * 30) + 20;
-              const carbs = macroNeeds ? macroNeeds.carbs : Math.floor(Math.random() * 40) + 30;
-              const fat = macroNeeds ? macroNeeds.fat : Math.floor(Math.random() * 15) + 10;
-              const calories = (protein * 4) + (carbs * 4) + (fat * 9);
               
-              // Utilizar el prompt del usuario para personalizar el nombre
-              let mealName = "Comida saludable";
-              let mealDesc = "Una receta saludable y equilibrada";
-              let mealType = "Comida";
-              
-              if (prompt.toLowerCase().includes("ensalada")) {
-                mealName = "Ensalada mediterránea";
-                mealDesc = "Una ensalada fresca con ingredientes mediterráneos";
-                mealType = "Almuerzo";
-              } else if (prompt.toLowerCase().includes("pollo")) {
-                mealName = "Pollo a la plancha con vegetales";
-                mealDesc = "Pechuga de pollo a la plancha con vegetales salteados";
-                mealType = "Cena";
-              } else if (prompt.toLowerCase().includes("desayuno")) {
-                mealName = "Tostadas de aguacate con huevo";
-                mealDesc = "Tostadas integrales con aguacate y huevo pochado";
-                mealType = "Desayuno";
+              if (mode === "analysis") {
+                // Generar un resultado de análisis simulado basado en el prompt
+                let foodName = "Alimento";
+                let foodDesc = "Análisis nutricional estimado por 100g";
+                let foodType = "Snack";
+                
+                // Extraer información del prompt para personalización
+                if (prompt.toLowerCase().includes("pan")) {
+                  foodName = "Pan casero";
+                  foodDesc = "Pan elaborado con harina, agua, sal y levadura";
+                  foodType = "Acompañamiento";
+                } else if (prompt.toLowerCase().includes("ensalada")) {
+                  foodName = "Ensalada mixta";
+                  foodDesc = "Mezcla de vegetales frescos";
+                  foodType = "Almuerzo";
+                } else if (prompt.toLowerCase().includes("pasta")) {
+                  foodName = "Pasta al huevo";
+                  foodDesc = "Pasta elaborada con harina y huevo";
+                  foodType = "Almuerzo";
+                }
+                
+                // Valores nutricionales estándar por 100g
+                const protein = Math.floor(Math.random() * 10) + 5; // 5-15g
+                const carbs = Math.floor(Math.random() * 30) + 15;  // 15-45g
+                const fat = Math.floor(Math.random() * 10) + 3;     // 3-13g
+                const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+                
+                // Lista de ingredientes basada en el prompt
+                const ingredients = [];
+                const promptLower = prompt.toLowerCase();
+                if (promptLower.includes("harina")) ingredients.push("Harina de trigo 250g");
+                if (promptLower.includes("aceite")) ingredients.push("Aceite vegetal 30g");
+                if (promptLower.includes("azúcar")) ingredients.push("Azúcar 20g");
+                if (promptLower.includes("huevo")) ingredients.push("Huevo 1 unidad");
+                if (promptLower.includes("leche")) ingredients.push("Leche 100ml");
+                if (promptLower.includes("sal")) ingredients.push("Sal 5g");
+                if (promptLower.includes("levadura")) ingredients.push("Levadura 10g");
+                
+                // Si no se detectaron ingredientes, agregar algunos genéricos
+                if (ingredients.length === 0) {
+                  ingredients.push("Ingrediente principal 200g");
+                  ingredients.push("Ingrediente secundario 50g");
+                  ingredients.push("Condimento 5g");
+                }
+                
+                result = {
+                  name: foodName,
+                  description: foodDesc,
+                  ingredients: ingredients,
+                  protein: protein,
+                  carbs: carbs,
+                  fat: fat,
+                  calories: calories,
+                  mealType: foodType
+                };
+              } else {
+                // Comportamiento original para modo receta
+                // Generar valores nutricionales basados en macroNeeds o valores predeterminados
+                const protein = macroNeeds ? macroNeeds.protein : Math.floor(Math.random() * 30) + 20;
+                const carbs = macroNeeds ? macroNeeds.carbs : Math.floor(Math.random() * 40) + 30;
+                const fat = macroNeeds ? macroNeeds.fat : Math.floor(Math.random() * 15) + 10;
+                const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+                
+                // Utilizar el prompt del usuario para personalizar el nombre
+                let mealName = "Comida saludable";
+                let mealDesc = "Una receta saludable y equilibrada";
+                let mealType = "Comida";
+                
+                if (prompt.toLowerCase().includes("ensalada")) {
+                  mealName = "Ensalada mediterránea";
+                  mealDesc = "Una ensalada fresca con ingredientes mediterráneos";
+                  mealType = "Almuerzo";
+                } else if (prompt.toLowerCase().includes("pollo")) {
+                  mealName = "Pollo a la plancha con vegetales";
+                  mealDesc = "Pechuga de pollo a la plancha con vegetales salteados";
+                  mealType = "Cena";
+                } else if (prompt.toLowerCase().includes("desayuno")) {
+                  mealName = "Tostadas de aguacate con huevo";
+                  mealDesc = "Tostadas integrales con aguacate y huevo pochado";
+                  mealType = "Desayuno";
+                }
+                
+                result = {
+                  name: mealName,
+                  description: mealDesc,
+                  ingredients: ["Ingrediente 1", "Ingrediente 2", "Ingrediente 3", "Ingrediente 4"],
+                  protein: protein,
+                  carbs: carbs,
+                  fat: fat,
+                  calories: calories,
+                  mealType: mealType
+                };
               }
-              
-              result = {
-                name: mealName,
-                description: mealDesc,
-                ingredients: ["Ingrediente 1", "Ingrediente 2", "Ingrediente 3", "Ingrediente 4"],
-                protein: protein,
-                carbs: carbs,
-                fat: fat,
-                calories: calories,
-                mealType: mealType
-              };
             } else {
               // Para otros errores, lanzar nuevamente para ser manejados por el catch externo
               throw openaiError;

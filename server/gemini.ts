@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export const geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // Función para generar una comida con Gemini
-export async function generateMealWithGemini(prompt: string) {
+export async function generateMealWithGemini(prompt: string, mode: string = "recipe") {
   try {
     // Intentar con varios modelos en orden de preferencia
     let model;
@@ -17,22 +17,47 @@ export async function generateMealWithGemini(prompt: string) {
     }
     
     // Estructurar el prompt para obtener datos en formato JSON
-    const structuredPrompt = `
-    Eres un chef y nutricionista experto. Crea una receta saludable basada en la siguiente petición:
-    "${prompt}"
+    let structuredPrompt;
     
-    Responde SOLO con un objeto JSON válido con el siguiente formato exacto (sin comentarios ni explicaciones adicionales):
-    {
-      "name": "Nombre de la comida",
-      "description": "Descripción breve",
-      "ingredients": ["Ingrediente 1", "Ingrediente 2", ...],
-      "protein": número (gramos de proteína),
-      "carbs": número (gramos de carbohidratos),
-      "fat": número (gramos de grasa),
-      "calories": número (calorías totales),
-      "mealType": "Tipo de comida: Desayuno, Almuerzo, Cena o Merienda"
+    if (mode === "analysis") {
+      // Prompt para análisis de ingredientes
+      structuredPrompt = `
+      Eres un nutricionista experto que analiza con precisión el contenido nutricional de los alimentos.
+      Analiza los ingredientes descritos en el siguiente texto: "${prompt}"
+      
+      Calcula los valores nutricionales por cada 100g del producto final.
+      
+      Responde SOLO con un objeto JSON válido con el siguiente formato exacto (sin comentarios ni explicaciones adicionales):
+      {
+        "name": "Nombre de la comida (breve y descriptivo)",
+        "description": "Descripción breve del proceso de preparación",
+        "ingredients": ["Ingrediente 1 con cantidad", "Ingrediente 2 con cantidad", ...],
+        "protein": número con un decimal (gramos de proteína por 100g),
+        "carbs": número con un decimal (gramos de carbohidratos por 100g),
+        "fat": número con un decimal (gramos de grasa por 100g),
+        "calories": número entero (calorías por 100g),
+        "mealType": "Tipo de comida: Desayuno, Almuerzo, Cena, Merienda, o Snack"
+      }
+      `;
+    } else {
+      // Prompt para creación de receta (predeterminado)
+      structuredPrompt = `
+      Eres un chef y nutricionista experto. Crea una receta saludable basada en la siguiente petición:
+      "${prompt}"
+      
+      Responde SOLO con un objeto JSON válido con el siguiente formato exacto (sin comentarios ni explicaciones adicionales):
+      {
+        "name": "Nombre de la comida",
+        "description": "Descripción breve",
+        "ingredients": ["Ingrediente 1 con cantidad", "Ingrediente 2 con cantidad", ...],
+        "protein": número con un decimal (gramos de proteína por porción),
+        "carbs": número con un decimal (gramos de carbohidratos por porción),
+        "fat": número con un decimal (gramos de grasa por porción),
+        "calories": número entero (calorías totales por porción),
+        "mealType": "Tipo de comida: Desayuno, Almuerzo, Cena, Merienda o Snack"
+      }
+      `;
     }
-    `;
     
     // Generar la respuesta
     const result = await model.generateContent(structuredPrompt);

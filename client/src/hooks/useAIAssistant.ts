@@ -20,14 +20,27 @@ export function useAIAssistant() {
     
     // Sort by creation date (newest first)
     return [...aiMealRequests]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => {
+        // Manejar posibles valores nulos en createdAt
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      })
       [0];
   }, [aiMealRequests]);
 
   // Mutation to request a meal from AI
   const requestAIMealMutation = useMutation({
-    mutationFn: async ({ prompt, macroNeeds }: { prompt: string; macroNeeds?: MacroNeeds }) => {
-      return await requestAIMeal(prompt, macroNeeds);
+    mutationFn: async ({ 
+      prompt, 
+      macroNeeds, 
+      mode = "recipe" 
+    }: { 
+      prompt: string; 
+      macroNeeds?: MacroNeeds | null;
+      mode?: string; 
+    }) => {
+      return await requestAIMeal(prompt, macroNeeds, mode);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-meals"] });
@@ -49,8 +62,8 @@ export function useAIAssistant() {
     aiMealRequests,
     lastAIMealRequest,
     isLoading: isLoadingRequests || requestAIMealMutation.isPending || saveAIMealMutation.isPending,
-    requestAIMeal: async (prompt: string, macroNeeds?: MacroNeeds) => {
-      return requestAIMealMutation.mutateAsync({ prompt, macroNeeds });
+    requestAIMeal: async (prompt: string, macroNeeds?: MacroNeeds | null, mode: string = "recipe") => {
+      return requestAIMealMutation.mutateAsync({ prompt, macroNeeds, mode });
     },
     saveAIMeal: async (requestId: number) => {
       return saveAIMealMutation.mutateAsync(requestId);
