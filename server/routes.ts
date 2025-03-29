@@ -34,12 +34,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "No autenticado" });
     }
-    
+
     // Asegurar que el userId esté establecido (req.user viene de passport)
     if (req.user) {
       req.body.userId = req.user.id;
     }
-    
+
     next();
   }
 
@@ -48,11 +48,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = insertUserSchema.parse(req.body);
       const existingUser = await storage.getUserByUsername(userData.username);
-      
+
       if (existingUser) {
         return res.status(409).json({ message: "El nombre de usuario ya existe" });
       }
-      
+
       const user = await storage.createUser(userData);
       res.status(201).json({ id: user.id, username: user.username });
     } catch (error) {
@@ -68,11 +68,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.body.userId;
       const goals = await storage.getUserGoals(userId);
-      
+
       if (!goals) {
         return res.status(404).json({ message: "Objetivos no encontrados" });
       }
-      
+
       res.json(goals);
     } catch (error) {
       res.status(500).json({ message: "Error al obtener objetivos" });
@@ -83,15 +83,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.body.userId;
       const goalsData = insertUserGoalSchema.parse({ ...req.body, userId });
-      
+
       // Check if user already has goals
       const existingGoals = await storage.getUserGoals(userId);
-      
+
       if (existingGoals) {
         const updated = await storage.updateUserGoals(existingGoals.id, goalsData);
         return res.json(updated);
       }
-      
+
       const goals = await storage.createUserGoals(goalsData);
       res.status(201).json(goals);
     } catch (error) {
@@ -107,14 +107,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.body.userId;
       const query = req.query.q as string | undefined;
-      
+
       let meals;
       if (query) {
         meals = await storage.searchMeals(userId, query);
       } else {
         meals = await storage.getMealsByUserId(userId);
       }
-      
+
       res.json(meals);
     } catch (error) {
       res.status(500).json({ message: "Error al obtener comidas" });
@@ -135,11 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mealId = parseInt(req.params.id);
       const meal = await storage.getMeal(mealId);
-      
+
       if (!meal) {
         return res.status(404).json({ message: "Comida no encontrada" });
       }
-      
+
       res.json(meal);
     } catch (error) {
       res.status(500).json({ message: "Error al obtener comida" });
@@ -164,14 +164,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mealId = parseInt(req.params.id);
       const existingMeal = await storage.getMeal(mealId);
-      
+
       if (!existingMeal) {
         return res.status(404).json({ message: "Comida no encontrada" });
       }
-      
+
       const mealData = { ...req.body };
       delete mealData.id; // Prevent overriding ID
-      
+
       const updated = await storage.updateMeal(mealId, mealData);
       res.json(updated);
     } catch (error) {
@@ -186,11 +186,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mealId = parseInt(req.params.id);
       const result = await storage.deleteMeal(mealId);
-      
+
       if (!result) {
         return res.status(404).json({ message: "Comida no encontrada" });
       }
-      
+
       res.status(204).end();
     } catch (error) {
       res.status(500).json({ message: "Error al eliminar comida" });
@@ -201,11 +201,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mealId = parseInt(req.params.id);
       const updated = await storage.toggleFavorite(mealId);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Comida no encontrada" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Error al cambiar favorito" });
@@ -219,17 +219,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const date = req.query.date as string;
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
-      
+
       if (date) {
         const log = await storage.getDailyLog(userId, date);
         return res.json(log || null);
       }
-      
+
       if (startDate && endDate) {
         const logs = await storage.getDailyLogsByDateRange(userId, startDate, endDate);
         return res.json(logs);
       }
-      
+
       res.status(400).json({ message: "Fecha requerida" });
     } catch (error) {
       res.status(500).json({ message: "Error al obtener registros diarios" });
@@ -240,15 +240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.body.userId;
       const logData = insertDailyLogSchema.parse({ ...req.body, userId });
-      
+
       // Check if log already exists for this date
       const existing = await storage.getDailyLog(userId, logData.date.toString());
-      
+
       if (existing) {
         const updated = await storage.updateDailyLog(existing.id, logData);
         return res.json(updated);
       }
-      
+
       const log = await storage.createDailyLog(logData);
       res.status(201).json(log);
     } catch (error) {
@@ -263,17 +263,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const logId = parseInt(req.params.id);
       const mealEntry = req.body;
-      
+
       if (!mealEntry || !mealEntry.mealId) {
         return res.status(400).json({ message: "Datos de comida incompletos" });
       }
-      
+
       const updated = await storage.addMealToDailyLog(logId, mealEntry);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Registro diario no encontrado" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Error al añadir comida al registro" });
@@ -284,13 +284,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const logId = parseInt(req.params.id);
       const mealIndex = parseInt(req.params.index);
-      
+
       const updated = await storage.removeMealFromDailyLog(logId, mealIndex);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Registro o comida no encontrada" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Error al eliminar comida del registro" });
@@ -311,12 +311,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mode = req.body.mode || "recipe"; // Valor por defecto para compatibilidad
       const isAnalysisRequest = mode === "analysis";
       let aiPrompt = "";
-      
+
       if (isAnalysisRequest) {
         // Analysis request: calculate macros for a food or recipe described by the user
         aiPrompt = `Analiza los ingredientes descritos en el siguiente texto: "${prompt}". 
   Calcula los valores nutricionales por cada 100g del producto final.
-  
+
   - Si el usuario menciona que la comida está cocida, horneada o preparada, asume que ha perdido peso por evaporación de agua.
   - Si el usuario proporciona el peso final después de la cocción, usa ese dato para ajustar los valores de macronutrientes por 100g. 
   - Si no se menciona el peso final, asume una pérdida de peso del 15% por defecto para alimentos horneados y 10% para alimentos cocidos en sartén o hervidos.
@@ -335,11 +335,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Recipe creation request (original behavior)
         aiPrompt = "Crea una receta de comida saludable";
-        
+
         if (macroNeeds) {
           aiPrompt += ` que contenga aproximadamente ${macroNeeds.protein}g de proteínas, ${macroNeeds.carbs}g de carbohidratos y ${macroNeeds.fat}g de grasas.`;
         }
-        
+
         aiPrompt += ` ${prompt}. Responde exclusivamente con un objeto JSON que contenga los siguientes campos: 
         name (nombre de la comida), 
         description (descripción breve), 
@@ -378,7 +378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error: any) {
           const openaiError = error;
           console.error("Error with OpenAI API:", openaiError);
-          
+
           try {
             // Intentar usar Gemini como alternativa
             console.log("Intentando con Gemini API como alternativa a OpenAI");
@@ -386,17 +386,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log("Gemini generó la respuesta correctamente");
           } catch (geminiError) {
             console.error("Error with Gemini API:", geminiError);
-            
+
             // Si ambas APIs fallan, usar un resultado predefinido para demostración
             if ((openaiError?.status === 429 || openaiError?.code === 'insufficient_quota') || true) {
               console.log("Usando resultado de comida de demostración debido a errores en las APIs");
-              
+
               if (mode === "analysis") {
                 // Generar un resultado de análisis simulado basado en el prompt
                 let foodName = "Alimento";
                 let foodDesc = "Análisis nutricional estimado por 100g";
                 let foodType = "Snack";
-                
+
                 // Extraer información del prompt para personalización
                 if (prompt.toLowerCase().includes("pan")) {
                   foodName = "Pan casero";
@@ -411,13 +411,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   foodDesc = "Pasta elaborada con harina y huevo";
                   foodType = "Almuerzo";
                 }
-                
+
                 // Valores nutricionales estándar por 100g
                 const protein = Math.floor(Math.random() * 10) + 5; // 5-15g
                 const carbs = Math.floor(Math.random() * 30) + 15;  // 15-45g
                 const fat = Math.floor(Math.random() * 10) + 3;     // 3-13g
                 const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-                
+
                 // Lista de ingredientes basada en el prompt
                 const ingredients = [];
                 const promptLower = prompt.toLowerCase();
@@ -428,14 +428,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (promptLower.includes("leche")) ingredients.push("Leche 100ml");
                 if (promptLower.includes("sal")) ingredients.push("Sal 5g");
                 if (promptLower.includes("levadura")) ingredients.push("Levadura 10g");
-                
+
                 // Si no se detectaron ingredientes, agregar algunos genéricos
                 if (ingredients.length === 0) {
                   ingredients.push("Ingrediente principal 200g");
                   ingredients.push("Ingrediente secundario 50g");
                   ingredients.push("Condimento 5g");
                 }
-                
+
                 result = {
                   name: foodName,
                   description: foodDesc,
@@ -453,12 +453,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const carbs = macroNeeds ? macroNeeds.carbs : Math.floor(Math.random() * 40) + 30;
                 const fat = macroNeeds ? macroNeeds.fat : Math.floor(Math.random() * 15) + 10;
                 const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-                
+
                 // Utilizar el prompt del usuario para personalizar el nombre
                 let mealName = "Comida saludable";
                 let mealDesc = "Una receta saludable y equilibrada";
                 let mealType = "Comida";
-                
+
                 if (prompt.toLowerCase().includes("ensalada")) {
                   mealName = "Ensalada mediterránea";
                   mealDesc = "Una ensalada fresca con ingredientes mediterráneos";
@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   mealDesc = "Tostadas integrales con aguacate y huevo pochado";
                   mealType = "Desayuno";
                 }
-                
+
                 result = {
                   name: mealName,
                   description: mealDesc,
@@ -529,11 +529,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const requestId = parseInt(req.params.id);
       const meal = await storage.saveAIMealRequestAsMeal(requestId);
-      
+
       if (!meal) {
         return res.status(404).json({ message: "Solicitud no encontrada o ya guardada" });
       }
-      
+
       res.json(meal);
     } catch (error) {
       res.status(500).json({ message: "Error al guardar comida IA" });

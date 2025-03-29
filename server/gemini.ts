@@ -22,10 +22,12 @@ export async function generateMealWithGemini(prompt: string, mode: string = "rec
     if (mode === "analysis") {
       // Prompt para análisis de ingredientes
       structuredPrompt = `
-      Eres un nutricionista experto que analiza con precisión el contenido nutricional de los alimentos.
-      Analiza los ingredientes descritos en el siguiente texto: "${prompt}"
-      
+      Analiza los ingredientes descritos en el siguiente texto: "${prompt}". 
       Calcula los valores nutricionales por cada 100g del producto final.
+      
+      - Si el usuario menciona que la comida está cocida, horneada o preparada, asume que ha perdido peso por evaporación de agua.
+      - Si el usuario proporciona el peso final después de la cocción, usa ese dato para ajustar los valores de macronutrientes por 100g. 
+      - Si no se menciona el peso final, asume una pérdida de peso del 15% por defecto para alimentos horneados y 10% para alimentos cocidos en sartén o hervidos.
       
       Responde SOLO con un objeto JSON válido con el siguiente formato exacto (sin comentarios ni explicaciones adicionales):
       {
