@@ -60,6 +60,12 @@ export default function AIRecommendation() {
 
           {lastAIMealRequest?.result ? (
             <div className="p-4 bg-gray-100 rounded-lg mb-4">
+              {lastAIMealRequest.result.calculation_explanation && (
+                <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-100">
+                  <p className="text-sm font-medium text-blue-900 mb-1">Explicación del cálculo:</p>
+                  <p className="text-sm text-blue-800">{lastAIMealRequest.result.calculation_explanation}</p>
+                </div>
+              )}
               <p className="text-sm">Para completar tus macros del día, te recomiendo:</p>
               <p className="font-medium mt-2">{lastAIMealRequest.result.name}</p>
               <p className="text-sm mt-1">{lastAIMealRequest.result.description}</p>
