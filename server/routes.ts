@@ -315,17 +315,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAnalysisRequest) {
         // Analysis request: calculate macros for a food or recipe described by the user
         aiPrompt = `Analiza los ingredientes descritos en el siguiente texto: "${prompt}". 
-        Calcula los valores nutricionales por cada 100g del producto final. 
-        Sé preciso y específico con los valores de macronutrientes.
-        Responde exclusivamente con un objeto JSON que contenga los siguientes campos: 
-        name (nombre de la comida, breve y descriptivo basado en los ingredientes), 
-        description (explicación breve del proceso de preparación),
-        ingredients (array de ingredientes con cantidades exactas),
-        protein (gramos de proteína por 100g, número con un decimal),
-        carbs (gramos de carbohidratos por 100g, número con un decimal),
-        fat (gramos de grasa por 100g, número con un decimal),
-        calories (calorías por 100g, número entero),
-        mealType (tipo de comida: Desayuno, Almuerzo, Cena, Merienda, o Snack).`;
+  Calcula los valores nutricionales por cada 100g del producto final.
+  
+  - Si el usuario menciona que la comida está cocida, horneada o preparada, asume que ha perdido peso por evaporación de agua.
+  - Si el usuario proporciona el peso final después de la cocción, usa ese dato para ajustar los valores de macronutrientes por 100g. 
+  - Si no se menciona el peso final, asume una pérdida de peso del 15% por defecto para alimentos horneados y 10% para alimentos cocidos en sartén o hervidos.
+
+  Responde exclusivamente con un objeto JSON que contenga los siguientes campos: 
+  {
+    "name": "Nombre de la comida, breve y descriptivo basado en los ingredientes",
+    "description": "Explicación breve del proceso de preparación",
+    "ingredients": ["Array de ingredientes con cantidades exactas"],
+    "protein": "Gramos de proteína por 100g, número con un decimal",
+    "carbs": "Gramos de carbohidratos por 100g, número con un decimal",
+    "fat": "Gramos de grasa por 100g, número con un decimal",
+    "calories": "Calorías por 100g, número entero",
+    "mealType": "Tipo de comida: Desayuno, Almuerzo, Cena, Merienda o Snack"
+  }`;
       } else {
         // Recipe creation request (original behavior)
         aiPrompt = "Crea una receta de comida saludable";
