@@ -47,12 +47,14 @@ interface CreateAIMealDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultMacroNeeds?: MacroNeeds | null;
+  lastAIMealRequest?: any; // Add lastAIMealRequest prop
 }
 
 export default function CreateAIMealDialog({ 
   open, 
   onOpenChange, 
-  defaultMacroNeeds
+  defaultMacroNeeds,
+  lastAIMealRequest
 }: CreateAIMealDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [macroNeeds, setMacroNeeds] = useState<MacroNeeds | null>(null);
@@ -78,7 +80,7 @@ export default function CreateAIMealDialog({
         useRemainingMacros: true,
         mode: "recipe",
       });
-      
+
       if (defaultMacroNeeds) {
         setMacroNeeds(defaultMacroNeeds);
       }
@@ -87,39 +89,39 @@ export default function CreateAIMealDialog({
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    
+
     try {
       // Preparar el prompt según el modo seleccionado
       let enhancedPrompt = data.prompt;
-      
+
       // Para modo de receta, agregar tipo de comida
       if (data.mode === "recipe" && data.mealType && data.mealType !== "Comida") {
         enhancedPrompt = `${data.mealType}: ${enhancedPrompt}`;
       }
-      
+
       // Para modo de análisis, asegurarse que el prompt sea claro
       if (data.mode === "analysis" && !enhancedPrompt.toLowerCase().includes("estoy haciendo")) {
         enhancedPrompt = `Estoy haciendo ${enhancedPrompt}`;
       }
-      
+
       // Incluir macros solo en modo de receta y si están disponibles
       let macroToUse: MacroNeeds | undefined = undefined;
       if (data.mode === "recipe" && data.useRemainingMacros && macroNeeds) {
         macroToUse = macroNeeds;
       }
-      
+
       // Request meal from AI
       const aiRequest = await requestAIMeal(enhancedPrompt, macroToUse, data.mode);
-      
+
       if (aiRequest?.result) {
         // Auto-save the meal if successful
         await saveAIMeal(aiRequest.id);
-        
+
         toast({
           title: data.mode === "recipe" ? "Receta creada con éxito" : "Cálculo de macros completado",
           description: "La comida ha sido creada y guardada en tu lista de comidas",
         });
-        
+
         onOpenChange(false);
       } else {
         throw new Error(data.mode === "recipe" ? "No se pudo generar la receta" : "No se pudieron calcular los macros");
@@ -145,8 +147,14 @@ export default function CreateAIMealDialog({
             <Sparkles className="h-5 w-5 mr-2 text-primary" />
             Crear comida con IA
           </DialogTitle>
+          {lastAIMealRequest?.result?.calculation_explanation && (
+            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
+              <p className="text-sm font-medium text-blue-900 mb-1">Explicación del cálculo:</p>
+              <p className="text-sm text-blue-800 whitespace-pre-line">{lastAIMealRequest.result.calculation_explanation}</p>
+            </div>
+          )}
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Modo de IA - Pestañas */}
@@ -175,7 +183,7 @@ export default function CreateAIMealDialog({
                           Calcular Macros
                         </TabsTrigger>
                       </TabsList>
-                      
+
                       <TabsContent value="recipe" className="mt-4">
                         <div className="space-y-4">
                           <FormField
@@ -203,7 +211,7 @@ export default function CreateAIMealDialog({
                               </FormItem>
                             )}
                           />
-                          
+
                           {macroNeeds && (
                             <div className="p-3 bg-blue-50 rounded-lg">
                               <p className="text-sm font-medium mb-2">Macros restantes para hoy:</p>
@@ -223,13 +231,13 @@ export default function CreateAIMealDialog({
                               </div>
                             </div>
                           )}
-                          
+
                           <FormDescription>
                             La IA creará una receta completa con sus macronutrientes basada en tu descripción.
                           </FormDescription>
                         </div>
                       </TabsContent>
-                      
+
                       <TabsContent value="analysis" className="mt-4">
                         <FormDescription>
                           Describe lo que estás preparando o comiendo con sus ingredientes y cantidades aproximadas. La IA calculará los macronutrientes por cada 100g.
@@ -240,7 +248,7 @@ export default function CreateAIMealDialog({
                 </FormItem>
               )}
             />
-            
+
             {/* Campo para describir lo que quiere el usuario */}
             <FormField
               control={form.control}
@@ -266,7 +274,7 @@ export default function CreateAIMealDialog({
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
