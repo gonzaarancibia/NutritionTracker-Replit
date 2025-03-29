@@ -354,164 +354,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         let result;
         try {
-          // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-          const aiResponse = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-              { 
-                role: "system", 
-                content: isAnalysisRequest 
-                  ? "Eres un nutricionista experto que analiza con precisión el contenido nutricional de los alimentos. Tus cálculos de macronutrientes son precisos y se basan en información científica actualizada sobre composición de alimentos. Calculas siempre los valores por cada 100g de producto final."
-                  : "Eres un chef y nutricionista experto. Creas recetas saludables con sus macronutrientes exactos." 
-              },
-              { role: "user", content: aiPrompt }
-            ],
-            response_format: { type: "json_object" }
-          });
+            // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            const aiResponse = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                { 
+                  role: "system", 
+                  content: isAnalysisRequest 
+                    ? "Eres un nutricionista experto que analiza con precisión el contenido nutricional de los alimentos. Tus cálculos de macronutrientes son precisos y se basan en información científica actualizada sobre composición de alimentos. Calculas siempre los valores por cada 100g de producto final. IMPORTANTE: Antes del JSON, explica paso a paso cómo llegaste al cálculo."
+                    : "Eres un chef y nutricionista experto. Creas recetas saludables con sus macronutrientes exactos." 
+                },
+                { role: "user", content: aiPrompt }
+              ],
+              response_format: { type: "json_object" }
+            });
 
-          const content = aiResponse.choices[0].message.content;
-          if (content) {
-            result = JSON.parse(content);
-          } else {
-            throw new Error("No se recibió respuesta de OpenAI");
-          }
-        } catch (error: any) {
-          const openaiError = error;
-          console.error("Error with OpenAI API:", openaiError);
+            const content = aiResponse.choices[0].message.content;
+            if (content) {
+              // Separar la explicación del JSON si existe
+              const parts = content.split(/(\{.*\})/s);
+              const explanation = parts[0].trim();
+              const jsonStr = parts.find(part => part.startsWith('{') && part.endsWith('}'));
 
-          try {
-            // Intentar usar Gemini como alternativa
-            console.log("Intentando con Gemini API como alternativa a OpenAI");
-            const jsonRegex = /\{.*\}/; //Regular expression to match JSON
-            const text = await generateMealWithGemini(prompt, mode);
-            // Separar la explicación del JSON
-            const parts = text.split('**JSON esperado:**');
-            if (parts.length < 2) {
-              throw new Error("No se encontró el formato esperado en la respuesta");
-            }
-
-            const explanation = parts[0].trim();
-            const jsonPart = parts[1].trim();
-
-            // Extraer y parsear el JSON
-            const match = jsonPart.match(jsonRegex);
-            if (!match) {
-              throw new Error("No se pudo extraer JSON de la respuesta");
-            }
-
-            const resultGemini = JSON.parse(match[0]);
-            // Agregar la explicación al resultado
-            result = {
-              ...resultGemini,
-              calculation_explanation: explanation
-            };
-            console.log("Gemini generó la respuesta correctamente");
-          } catch (geminiError) {
-            console.error("Error with Gemini API:", geminiError);
-
-            // Si ambas APIs fallan, usar un resultado predefinido para demostración
-            if ((openaiError?.status === 429 || openaiError?.code === 'insufficient_quota') || true) {
-              console.log("Usando resultado de comida de demostración debido a errores en las APIs");
-
-              if (mode === "analysis") {
-                // Generar un resultado de análisis simulado basado en el prompt
-                let foodName = "Alimento";
-                let foodDesc = "Análisis nutricional estimado por 100g";
-                let foodType = "Snack";
-
-                // Extraer información del prompt para personalización
-                if (prompt.toLowerCase().includes("pan")) {
-                  foodName = "Pan casero";
-                  foodDesc = "Pan elaborado con harina, agua, sal y levadura";
-                  foodType = "Acompañamiento";
-                } else if (prompt.toLowerCase().includes("ensalada")) {
-                  foodName = "Ensalada mixta";
-                  foodDesc = "Mezcla de vegetales frescos";
-                  foodType = "Almuerzo";
-                } else if (prompt.toLowerCase().includes("pasta")) {
-                  foodName = "Pasta al huevo";
-                  foodDesc = "Pasta elaborada con harina y huevo";
-                  foodType = "Almuerzo";
-                }
-
-                // Valores nutricionales estándar por 100g
-                const protein = Math.floor(Math.random() * 10) + 5; // 5-15g
-                const carbs = Math.floor(Math.random() * 30) + 15;  // 15-45g
-                const fat = Math.floor(Math.random() * 10) + 3;     // 3-13g
-                const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-
-                // Lista de ingredientes basada en el prompt
-                const ingredients = [];
-                const promptLower = prompt.toLowerCase();
-                if (promptLower.includes("harina")) ingredients.push("Harina de trigo 250g");
-                if (promptLower.includes("aceite")) ingredients.push("Aceite vegetal 30g");
-                if (promptLower.includes("azúcar")) ingredients.push("Azúcar 20g");
-                if (promptLower.includes("huevo")) ingredients.push("Huevo 1 unidad");
-                if (promptLower.includes("leche")) ingredients.push("Leche 100ml");
-                if (promptLower.includes("sal")) ingredients.push("Sal 5g");
-                if (promptLower.includes("levadura")) ingredients.push("Levadura 10g");
-
-                // Si no se detectaron ingredientes, agregar algunos genéricos
-                if (ingredients.length === 0) {
-                  ingredients.push("Ingrediente principal 200g");
-                  ingredients.push("Ingrediente secundario 50g");
-                  ingredients.push("Condimento 5g");
-                }
-
-                result = {
-                  name: foodName,
-                  description: foodDesc,
-                  ingredients: ingredients,
-                  protein: protein,
-                  carbs: carbs,
-                  fat: fat,
-                  calories: calories,
-                  mealType: foodType
-                };
-              } else {
-                // Comportamiento original para modo receta
-                // Generar valores nutricionales basados en macroNeeds o valores predeterminados
-                const protein = macroNeeds ? macroNeeds.protein : Math.floor(Math.random() * 30) + 20;
-                const carbs = macroNeeds ? macroNeeds.carbs : Math.floor(Math.random() * 40) + 30;
-                const fat = macroNeeds ? macroNeeds.fat : Math.floor(Math.random() * 15) + 10;
-                const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-
-                // Utilizar el prompt del usuario para personalizar el nombre
-                let mealName = "Comida saludable";
-                let mealDesc = "Una receta saludable y equilibrada";
-                let mealType = "Comida";
-
-                if (prompt.toLowerCase().includes("ensalada")) {
-                  mealName = "Ensalada mediterránea";
-                  mealDesc = "Una ensalada fresca con ingredientes mediterráneos";
-                  mealType = "Almuerzo";
-                } else if (prompt.toLowerCase().includes("pollo")) {
-                  mealName = "Pollo a la plancha con vegetales";
-                  mealDesc = "Pechuga de pollo a la plancha con vegetales salteados";
-                  mealType = "Cena";
-                } else if (prompt.toLowerCase().includes("desayuno")) {
-                  mealName = "Tostadas de aguacate con huevo";
-                  mealDesc = "Tostadas integrales con aguacate y huevo pochado";
-                  mealType = "Desayuno";
-                }
-
-                result = {
-                  name: mealName,
-                  description: mealDesc,
-                  ingredients: ["Ingrediente 1", "Ingrediente 2", "Ingrediente 3", "Ingrediente 4"],
-                  protein: protein,
-                  carbs: carbs,
-                  fat: fat,
-                  calories: calories,
-                  mealType: mealType
-                };
+              if (!jsonStr) {
+                throw new Error("No se encontró JSON en la respuesta");
               }
+
+              const jsonData = JSON.parse(jsonStr);
+              result = {
+                ...jsonData,
+                calculation_explanation: explanation || undefined
+              };
             } else {
-              // Para otros errores, lanzar nuevamente para ser manejados por el catch externo
-              throw openaiError;
+              throw new Error("No se recibió respuesta de OpenAI");
+            }
+          } catch (error: any) {
+            const openaiError = error;
+            console.error("Error with OpenAI API:", openaiError);
+
+            try {
+              // Intentar usar Gemini como alternativa
+              console.log("Intentando con Gemini API como alternativa a OpenAI");
+              const jsonRegex = /\{.*\}/; //Regular expression to match JSON
+              const text = await generateMealWithGemini(prompt, mode);
+              // Separar la explicación del JSON
+              const parts = text.split('**JSON esperado:**');
+              if (parts.length < 2) {
+                throw new Error("No se encontró el formato esperado en la respuesta");
+              }
+
+              const explanation = parts[0].trim();
+              const jsonPart = parts[1].trim();
+
+              // Extraer y parsear el JSON
+              const match = jsonPart.match(jsonRegex);
+              if (!match) {
+                throw new Error("No se pudo extraer JSON de la respuesta");
+              }
+
+              const resultGemini = JSON.parse(match[0]);
+              // Agregar la explicación al resultado
+              result = {
+                ...resultGemini,
+                calculation_explanation: explanation
+              };
+              console.log("Gemini generó la respuesta correctamente");
+            } catch (geminiError) {
+              console.error("Error with Gemini API:", geminiError);
+
+              // Si ambas APIs fallan, usar un resultado predefinido para demostración
+              if ((openaiError?.status === 429 || openaiError?.code === 'insufficient_quota') || true) {
+                console.log("Usando resultado de comida de demostración debido a errores en las APIs");
+
+                if (mode === "analysis") {
+                  // Generar un resultado de análisis simulado basado en el prompt
+                  let foodName = "Alimento";
+                  let foodDesc = "Análisis nutricional estimado por 100g";
+                  let foodType = "Snack";
+
+                  // Extraer información del prompt para personalización
+                  if (prompt.toLowerCase().includes("pan")) {
+                    foodName = "Pan casero";
+                    foodDesc = "Pan elaborado con harina, agua, sal y levadura";
+                    foodType = "Acompañamiento";
+                  } else if (prompt.toLowerCase().includes("ensalada")) {
+                    foodName = "Ensalada mixta";
+                    foodDesc = "Mezcla de vegetales frescos";
+                    foodType = "Almuerzo";
+                  } else if (prompt.toLowerCase().includes("pasta")) {
+                    foodName = "Pasta al huevo";
+                    foodDesc = "Pasta elaborada con harina y huevo";
+                    foodType = "Almuerzo";
+                  }
+
+                  // Valores nutricionales estándar por 100g
+                  const protein = Math.floor(Math.random() * 10) + 5; // 5-15g
+                  const carbs = Math.floor(Math.random() * 30) + 15;  // 15-45g
+                  const fat = Math.floor(Math.random() * 10) + 3;     // 3-13g
+                  const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+
+                  // Lista de ingredientes basada en el prompt
+                  const ingredients = [];
+                  const promptLower = prompt.toLowerCase();
+                  if (promptLower.includes("harina")) ingredients.push("Harina de trigo 250g");
+                  if (promptLower.includes("aceite")) ingredients.push("Aceite vegetal 30g");
+                  if (promptLower.includes("azúcar")) ingredients.push("Azúcar 20g");
+                  if (promptLower.includes("huevo")) ingredients.push("Huevo 1 unidad");
+                  if (promptLower.includes("leche")) ingredients.push("Leche 100ml");
+                  if (promptLower.includes("sal")) ingredients.push("Sal 5g");
+                  if (promptLower.includes("levadura")) ingredients.push("Levadura 10g");
+
+                  // Si no se detectaron ingredientes, agregar algunos genéricos
+                  if (ingredients.length === 0) {
+                    ingredients.push("Ingrediente principal 200g");
+                    ingredients.push("Ingrediente secundario 50g");
+                    ingredients.push("Condimento 5g");
+                  }
+
+                  result = {
+                    name: foodName,
+                    description: foodDesc,
+                    ingredients: ingredients,
+                    protein: protein,
+                    carbs: carbs,
+                    fat: fat,
+                    calories: calories,
+                    mealType: foodType
+                  };
+                } else {
+                  // Comportamiento original para modo receta
+                  // Generar valores nutricionales basados en macroNeeds o valores predeterminados
+                  const protein = macroNeeds ? macroNeeds.protein : Math.floor(Math.random() * 30) + 20;
+                  const carbs = macroNeeds ? macroNeeds.carbs : Math.floor(Math.random() * 40) + 30;
+                  const fat = macroNeeds ? macroNeeds.fat : Math.floor(Math.random() * 15) + 10;
+                  const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+
+                  // Utilizar el prompt del usuario para personalizar el nombre
+                  let mealName = "Comida saludable";
+                  let mealDesc = "Una receta saludable y equilibrada";
+                  let mealType = "Comida";
+
+                  if (prompt.toLowerCase().includes("ensalada")) {
+                    mealName = "Ensalada mediterránea";
+                    mealDesc = "Una ensalada fresca con ingredientes mediterráneos";
+                    mealType = "Almuerzo";
+                  } else if (prompt.toLowerCase().includes("pollo")) {
+                    mealName = "Pollo a la plancha con vegetales";
+                    mealDesc = "Pechuga de pollo a la plancha con vegetales salteados";
+                    mealType = "Cena";
+                  } else if (prompt.toLowerCase().includes("desayuno")) {
+                    mealName = "Tostadas de aguacate con huevo";
+                    mealDesc = "Tostadas integrales con aguacate y huevo pochado";
+                    mealType = "Desayuno";
+                  }
+
+                  result = {
+                    name: mealName,
+                    description: mealDesc,
+                    ingredients: ["Ingrediente 1", "Ingrediente 2", "Ingrediente 3", "Ingrediente 4"],
+                    protein: protein,
+                    carbs: carbs,
+                    fat: fat,
+                    calories: calories,
+                    mealType: mealType
+                  };
+                }
+              } else {
+                // Para otros errores, lanzar nuevamente para ser manejados por el catch externo
+                throw openaiError;
+              }
             }
           }
-        }
 
         // Store the AI request and result
         const aiMealRequest = await storage.createAIMealRequest({
