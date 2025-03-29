@@ -21,15 +21,27 @@ export async function generateMealWithGemini(prompt: string, mode: string = "rec
     
     if (mode === "analysis") {
       // Prompt para análisis de ingredientes
-      structuredPrompt = `
-      Analiza los ingredientes descritos en el siguiente texto: "${prompt}". 
-      Calcula los valores nutricionales por cada 100g del producto final.
-      
-      - Si el usuario menciona que la comida está cocida, horneada o preparada, asume que ha perdido peso por evaporación de agua.
-      - Si el usuario proporciona el peso final después de la cocción, usa ese dato para ajustar los valores de macronutrientes por 100g. 
-      - Si no se menciona el peso final, asume una pérdida de peso del 15% por defecto para alimentos horneados y 10% para alimentos cocidos en sartén o hervidos.
-      
-      Responde SOLO con un objeto JSON válido con el siguiente formato exacto (sin comentarios ni explicaciones adicionales):
+      structuredPrompt = `Eres un asistente experto en nutrición. Tu tarea es analizar los ingredientes y calcular las macros por 100g del producto final.
+
+### **Proceso de cálculo**
+1. **Identifica los ingredientes y sus cantidades en gramos.** 
+2. **Suma los macronutrientes de cada ingrediente para obtener los totales de proteína, carbohidratos y grasa.**  
+3. **Si la comida es cocida u horneada, ajusta los valores según la pérdida de peso:**  
+   - Si el usuario proporciona el peso final después de la cocción, usa ese dato.  
+   - Si no hay peso final, asume una pérdida del 10% para hervidos y 15% para horneados por defecto.  
+4. **Divide los macros ajustados por el peso final para obtener los valores por 100g.**  
+5. **Calcula las calorías totales usando:**  
+   - Proteína y carbohidratos: 4 kcal por gramo  
+   - Grasas: 9 kcal por gramo  
+6. **Responde en formato JSON, pero antes explica cómo llegaste al cálculo.**  
+
+Analiza este texto: "${prompt}"
+
+### **Ejemplo de formato de respuesta esperado**  
+**Explicación previa:**  
+> "La receta contiene [ingredientes]. La suma total de macros antes de la cocción es: [valores]. Como [método de cocción] y [peso final/pérdida asumida], los macros se ajustan para obtener valores por 100g."  
+
+**JSON esperado:**
       {
         "name": "Nombre de la comida (breve y descriptivo)",
         "description": "Descripción breve del proceso de preparación",

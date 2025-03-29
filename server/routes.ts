@@ -382,7 +382,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             // Intentar usar Gemini como alternativa
             console.log("Intentando con Gemini API como alternativa a OpenAI");
-            result = await generateMealWithGemini(prompt, mode);
+            const jsonRegex = /\{.*\}/; //Regular expression to match JSON
+            const text = await generateMealWithGemini(prompt, mode);
+            // Separar la explicación del JSON
+            const parts = text.split('**JSON esperado:**');
+            if (parts.length < 2) {
+              throw new Error("No se encontró el formato esperado en la respuesta");
+            }
+
+            const explanation = parts[0].trim();
+            const jsonPart = parts[1].trim();
+
+            // Extraer y parsear el JSON
+            const match = jsonPart.match(jsonRegex);
+            if (!match) {
+              throw new Error("No se pudo extraer JSON de la respuesta");
+            }
+
+            const resultGemini = JSON.parse(match[0]);
+            // Agregar la explicación al resultado
+            result = {
+              ...resultGemini,
+              calculation_explanation: explanation
+            };
             console.log("Gemini generó la respuesta correctamente");
           } catch (geminiError) {
             console.error("Error with Gemini API:", geminiError);
