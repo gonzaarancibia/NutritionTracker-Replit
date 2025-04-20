@@ -5,3 +5,4 @@ This is a simple app that allows users to track their daily nutrition intake. Us
 ### Features
 - Add food items to your daily intake
 - View your daily intake
+- View your daily intake chart
